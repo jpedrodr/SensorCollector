@@ -108,7 +108,7 @@ std::string getFirstTimestampFromDataFile(const std::string &dataFilePath) {
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_jpdr_sensorcollector_MainViewModel_createReport(
+Java_com_jpdr_sensorcollector_view_MainViewModel_createReport(
         JNIEnv *env,
         jobject thiz,
         jstring session_name

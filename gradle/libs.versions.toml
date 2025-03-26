@@ -1,5 +1,6 @@
 [versions]
 agp = "8.9.0"
+
 kotlin = "2.0.21"
 coreKtx = "1.15.0"
 junit = "4.13.2"
@@ -11,9 +12,14 @@ compose = "1.7.8"
 activity-compose = "1.10.1"
 ui-tooling = "1.7.8"
 lifecycle-process = "2.8.7"
+hilt-lifecycle-viewmodel = "1.0.0-alpha03"
+hilt-android = "2.44"
+hilt = "2.51.1"
+hilt-android-compiler = "2.51.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+hilt-android-compiler = { module = "com.google.dagger:hilt-android-compiler", version.ref = "hilt-android-compiler" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
@@ -21,6 +27,9 @@ androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 androidx-compose-ui = { group = "androidx.compose.ui", name = "ui", version.ref = "compose" }
 androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+
+androidx-hilt-lifecycle-viewmodel = { module = "androidx.hilt:hilt-lifecycle-viewmodel", version.ref = "hilt-lifecycle-viewmodel" }
+hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt-android" }
 
 androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling", version.ref = "ui-tooling" }
 
@@ -34,4 +43,6 @@ androidx-lifecycle = { group = "androidx.lifecycle", name = "lifecycle-process",
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+hilt-android = { id = "com.google.dagger.hilt.android", version.ref="hilt" }
+kotlin-kapt = { id = "kotlin-kapt" }
 

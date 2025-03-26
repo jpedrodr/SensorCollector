@@ -1,9 +1,11 @@
-package com.jpdr.sensorcollector
+package com.jpdr.sensorcollector.view
 
 import android.app.Application
 import androidx.annotation.StringRes
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.jpdr.sensorcollector.R
+import com.jpdr.sensorcollector.SensorManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -67,56 +69,56 @@ class MainViewModel(
                     return
                 }
 
-                val data = sensorManager.getSessionData(_state.value.sessionName)
-
-                if (data.isEmpty()) {
-                    _state.update {
-                        it.copy(
-                            errorRes = R.string.error_empty_session_data,
-                            sessionData = null
-                        )
-                    }
-                } else {
-                   val formattedData = getFormattedSessionData(data)
-
-                    _state.update {
-                        it.copy(sessionData = formattedData)
-                    }
-                }
+//                val data = sensorManager.getSessionData(_state.value.sessionName)
+//
+//                if (data.isEmpty()) {
+//                    _state.update {
+//                        it.copy(
+//                            errorRes = R.string.error_empty_session_data,
+//                            sessionData = null
+//                        )
+//                    }
+//                } else {
+//                   val formattedData = getFormattedSessionData(data)
+//
+//                    _state.update {
+//                        it.copy(sessionData = formattedData)
+//                    }
+//                }
             }
 
             is MainIntent.DisplayLastReportData -> {
-                val data = sensorManager.getLastReportData(_state.value.sessionName)
-                _state.update {
-                    it.copy(reportData = data)
-                }
+//                val data = sensorManager.getLastReportData(_state.value.sessionName)
+//                _state.update {
+//                    it.copy(reportData = data)
+//                }
             }
 
             is MainIntent.StartCollecting -> {
-                if (_state.value.sessionName.isEmpty()) {
-                    _state.update {
-                        it.copy(errorRes = R.string.error_empty_session_name)
-                    }
-                } else {
-                    _state.update {
-                        it.copy(
-                            isCollecting = true,
-                            errorRes = null,
-                            sessionData = null
-                        )
-                    }
-                    sensorManager.startCollectingData(_state.value.sessionName)
-                    startReporting(_state.value.sessionName)
-                }
+//                if (_state.value.sessionName.isEmpty()) {
+//                    _state.update {
+//                        it.copy(errorRes = R.string.error_empty_session_name)
+//                    }
+//                } else {
+//                    _state.update {
+//                        it.copy(
+//                            isCollecting = true,
+//                            errorRes = null,
+//                            sessionData = null
+//                        )
+//                    }
+//                    sensorManager.startCollectingData(_state.value.sessionName)
+//                    startReporting(_state.value.sessionName)
+//                }
             }
 
             MainIntent.StopCollecting -> {
-                _state.update {
-                    it.copy(isCollecting = false)
-                }
-
-                sensorManager.stopCollectingData()
-                stopReporting(_state.value.sessionName)
+//                _state.update {
+//                    it.copy(isCollecting = false)
+//                }
+//
+//                sensorManager.stopCollectingData()
+//                stopReporting(_state.value.sessionName)
             }
         }
     }
