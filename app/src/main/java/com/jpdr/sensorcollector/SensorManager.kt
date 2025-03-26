@@ -11,9 +11,6 @@ import java.io.File
 import java.io.FileReader
 import java.io.FileWriter
 import java.io.IOException
-import java.text.DecimalFormat
-import java.text.DecimalFormatSymbols
-import java.util.Locale
 
 class SensorManager(
     private val context: Context
@@ -24,16 +21,6 @@ class SensorManager(
         sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
     }
     private var fileWriter: FileWriter? = null
-
-    val formatter = DecimalFormat("0.##E0", DecimalFormatSymbols(Locale.US))
-
-    private fun formatTimestamp(timestamp: Long): String {
-        return try {
-            formatter.format(timestamp)
-        } catch (_: NumberFormatException) {
-            timestamp.toString() // Return original if not a valid number
-        }
-    }
 
     override fun onSensorChanged(event: SensorEvent?) {
         event?.let {
@@ -88,7 +75,7 @@ class SensorManager(
         try {
             fileWriter
                 ?.append(
-                    "${formatTimestamp(timestamp)}$VALUE_SEPARATOR$sensorId" +
+                    "$timestamp$VALUE_SEPARATOR$sensorId" +
                             "$VALUE_SEPARATOR$x$VALUE_SEPARATOR$y$VALUE_SEPARATOR$z\n"
                 )
         } catch (e: IOException) {
@@ -103,7 +90,7 @@ class SensorManager(
     private fun getSessionDirectory(sessionName: String): File {
         val rootDir = File(context.getExternalFilesDir(null), ROOT_PATH)
 
-        val sessionDir = File(rootDir, sessionName.trim())
+        val sessionDir = File(rootDir, sessionName)
 
         if (!sessionDir.exists()) {
             sessionDir.mkdirs()
@@ -124,14 +111,48 @@ class SensorManager(
             dataDir.mkdirs()
         }
 
+        val reportDir = File(sessionDir, REPORT_DIRECTORY)
+        if (!reportDir.exists()) {
+            reportDir.mkdirs()
+        }
+
         // gets the current data file, or creates a new one if it doesn't exist
         val dataFile =
             dataDir.listFiles { it.isFile && it.name == DATA_FILE_NAME }?.firstOrNull()
                 ?: File(dataDir, DATA_FILE_NAME)
 
-        println("joaorosa | path=${dataFile.path}")
-
         return dataFile
+    }
+
+    fun getLastReportData(sessionName: String): List<List<String>> {
+        val rootDir = File(context.getExternalFilesDir(null), ROOT_PATH)
+
+        val sessionDir = File(rootDir, sessionName)
+
+        val reportDir = File(sessionDir, REPORT_DIRECTORY)
+
+        val reportFiles = reportDir.listFiles()
+            ?.filter { it.isFile && it.name.startsWith(REPORT_FILE_NAME_PREFIX) }
+
+        val reportFile = reportFiles?.lastOrNull() ?: return emptyList()
+
+        val data = mutableListOf<List<String>>()
+
+        try {
+            BufferedReader(FileReader(reportFile)).use { reader ->
+                var line: String?
+                while (reader.readLine().also { line = it } != null) {
+                    // Split by commas and add to the list
+                    line?.split(VALUE_SEPARATOR)?.let {
+                        data.add(it)
+                    }
+                }
+            }
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
+
+        return data.toList()
     }
 
     /**
@@ -141,7 +162,7 @@ class SensorManager(
     fun getSessionData(sessionName: String): List<List<String>> {
         val rootDir = File(context.getExternalFilesDir(null), ROOT_PATH)
 
-        val sessionDir = File(rootDir, sessionName.trim())
+        val sessionDir = File(rootDir, sessionName)
 
         val dataDir = File(sessionDir, DATA_DIRECTORY)
 
@@ -169,6 +190,8 @@ class SensorManager(
     companion object {
         private const val ROOT_PATH = "/SensorCollector/collects"
         private const val DATA_DIRECTORY = "data"
+        private const val REPORT_DIRECTORY = "report"
+        private const val REPORT_FILE_NAME_PREFIX = "accelerometer_report_"
         private const val DATA_FILE_NAME = "accelerometer.csv"
 
         private const val TIMESTAMP_HEADER = "timestamp (ns)"

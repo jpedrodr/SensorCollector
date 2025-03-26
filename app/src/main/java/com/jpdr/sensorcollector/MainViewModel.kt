@@ -1,17 +1,18 @@
 package com.jpdr.sensorcollector
 
 import android.app.Application
-import android.content.Intent
 import androidx.annotation.StringRes
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
+import java.util.Locale
 
 class MainViewModel(
     context: Application
@@ -23,6 +24,8 @@ class MainViewModel(
 
     private val sensorManager: SensorManager = SensorManager(context)
 
+    val formatter = DecimalFormat("0.##E0", DecimalFormatSymbols(Locale.US))
+
     private val _state = MutableStateFlow<SensorCollectorState>(
         SensorCollectorState(
             availableFrequencies = FREQUENCIES,
@@ -31,11 +34,13 @@ class MainViewModel(
     )
     val state = _state.asStateFlow()
 
+    external fun createReport(sessionName: String)
+
     fun handleIntent(intent: MainIntent) {
         when (intent) {
             is MainIntent.UpdateSessionName -> {
                 _state.update {
-                    it.copy(sessionName = intent.sessionName)
+                    it.copy(sessionName = intent.sessionName.trim())
                 }
             }
 
@@ -72,9 +77,18 @@ class MainViewModel(
                         )
                     }
                 } else {
+                   val formattedData = getFormattedSessionData(data)
+
                     _state.update {
-                        it.copy(sessionData = data)
+                        it.copy(sessionData = formattedData)
                     }
+                }
+            }
+
+            is MainIntent.DisplayLastReportData -> {
+                val data = sensorManager.getLastReportData(_state.value.sessionName)
+                _state.update {
+                    it.copy(reportData = data)
                 }
             }
 
@@ -107,14 +121,25 @@ class MainViewModel(
         }
     }
 
-    external fun createReport(sessionName: String)
+    fun getFormattedSessionData(data: List<List<String>>): List<List<String>> {
+        return data.mapIndexed { index, row ->
+            if (index == 0) row
+            else {
+                val timeStamp = row.firstOrNull() ?: return@mapIndexed row
+                val updatedRow = listOf(
+                    formatTimestamp(timeStamp.toLong())
+                ) + row.drop(1)
+                updatedRow
+            }
+        }
+    }
 
     private fun startReporting(sessionName: String) {
         println("joaorosa | startReporting -> $sessionName")
         viewModelScope.launch(Dispatchers.IO) {
             while (_state.value.isCollecting) {
-                createReport(sessionName)
                 delay(INTERVAL_MILLIS)
+                createReport(sessionName)
             }
         }
     }
@@ -131,6 +156,14 @@ class MainViewModel(
         //    private const val INTERVAL_MILLIS = 15 * 60 * 1000L // 15 minutes in milliseconds
         private const val INTERVAL_MILLIS = 1 * 6 * 1000L // 15 minutes in milliseconds // joaorosa
     }
+
+    private fun formatTimestamp(timestamp: Long): String {
+        return try {
+            formatter.format(timestamp)
+        } catch (_: NumberFormatException) {
+            timestamp.toString() // Return original if not a valid number
+        }
+    }
 }
 
 data class SensorCollectorState(
@@ -140,7 +173,8 @@ data class SensorCollectorState(
     val isDropdownMenuExpanded: Boolean = false,
     val isCollecting: Boolean = false,
     @StringRes val errorRes: Int? = null,
-    val sessionData: List<List<String>>? = null
+    val sessionData: List<List<String>>? = null,
+    val reportData: List<List<String>>? = null,
 )
 
 sealed class MainIntent() {
@@ -150,4 +184,5 @@ sealed class MainIntent() {
     data object StartCollecting : MainIntent()
     data object StopCollecting : MainIntent()
     data object DisplaySessionData : MainIntent()
+    data object DisplayLastReportData : MainIntent()
 }
