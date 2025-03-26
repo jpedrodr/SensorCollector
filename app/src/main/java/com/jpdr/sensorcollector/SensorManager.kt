@@ -53,9 +53,7 @@ class SensorManager(
     }
 
     fun startCollectingData(sessionName: String) {
-        val sessionDir = getSessionDirectory(sessionName)
-
-        val dataFile = getDataFile(sessionDir)
+        val dataFile = getDataFile(sessionName)
 
         try {
             fileWriter = FileWriter(dataFile, true)
@@ -118,7 +116,9 @@ class SensorManager(
      * Gets the data file if the given session
      * If it doesn't exist, creates and returns it
      */
-    private fun getDataFile(sessionDir: File): File {
+    private fun getDataFile(sessionName: String): File {
+        val sessionDir = getSessionDirectory(sessionName)
+
         val dataDir = File(sessionDir, DATA_DIRECTORY)
         if (!dataDir.exists()) {
             dataDir.mkdirs()
@@ -128,6 +128,8 @@ class SensorManager(
         val dataFile =
             dataDir.listFiles { it.isFile && it.name == DATA_FILE_NAME }?.firstOrNull()
                 ?: File(dataDir, DATA_FILE_NAME)
+
+        println("joaorosa | path=${dataFile.path}")
 
         return dataFile
     }

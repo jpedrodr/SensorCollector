@@ -1,15 +1,26 @@
 package com.jpdr.sensorcollector
 
 import android.app.Application
+import android.content.Intent
 import androidx.annotation.StringRes
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 class MainViewModel(
     context: Application
 ) : AndroidViewModel(context) {
+
+    init {
+        System.loadLibrary("sensor_analyzer")
+    }
+
     private val sensorManager: SensorManager = SensorManager(context)
 
     private val _state = MutableStateFlow<SensorCollectorState>(
@@ -81,6 +92,7 @@ class MainViewModel(
                         )
                     }
                     sensorManager.startCollectingData(_state.value.sessionName)
+                    startReporting(_state.value.sessionName)
                 }
             }
 
@@ -90,12 +102,34 @@ class MainViewModel(
                 }
 
                 sensorManager.stopCollectingData()
+                stopReporting(_state.value.sessionName)
             }
+        }
+    }
+
+    external fun createReport(sessionName: String)
+
+    private fun startReporting(sessionName: String) {
+        println("joaorosa | startReporting -> $sessionName")
+        viewModelScope.launch(Dispatchers.IO) {
+            while (_state.value.isCollecting) {
+                createReport(sessionName)
+                delay(INTERVAL_MILLIS)
+            }
+        }
+    }
+
+    private fun stopReporting(sessionName: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+//            stopReporting(sessionName)
         }
     }
 
     companion object {
         private val FREQUENCIES = listOf("100Hz", "200Hz", "MAX")
+
+        //    private const val INTERVAL_MILLIS = 15 * 60 * 1000L // 15 minutes in milliseconds
+        private const val INTERVAL_MILLIS = 1 * 6 * 1000L // 15 minutes in milliseconds // joaorosa
     }
 }
 
