@@ -1,19 +1,20 @@
 package com.jpdr.sensorcollector
 
-import android.hardware.Sensor
-import android.hardware.SensorEvent
-import android.hardware.SensorEventListener
-import android.hardware.SensorManager
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.DropdownMenu
@@ -22,39 +23,34 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.material.TextField
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import java.io.BufferedReader
-import java.io.File
-import java.io.FileOutputStream
-import java.io.FileReader
-import java.io.IOException
-import java.io.OutputStreamWriter
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 class MainActivity : AppCompatActivity() {
 
+    //    private lateinit var sensorManager: SensorManager
     private val viewModel by viewModels<MainViewModel>()
-
-    private var sensorEventListener: SensorEventListener? = null
-    private val sensorManager by lazy { getSystemService(SENSOR_SERVICE) as SensorManager }
-    private val accelerometerSensor by lazy {
-        sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-//         Example of a call to a native method
 
+//         Example of a call to a native method
 //        stringFromJNI()
+//
         setContent {
+            val state by viewModel.state.collectAsStateWithLifecycle()
+
             SensorCollectorApp(
-                onStartCollecting = ::startCollectingData,
-                onStopCollecting = ::stopCollectingData
+                state = state,
+                handleIntent = {
+                    viewModel.handleIntent(it)
+                }
             )
         }
     }
@@ -71,124 +67,50 @@ class MainActivity : AppCompatActivity() {
             System.loadLibrary("sensor_analyzer")
         }
 
-        const val ROOT_PATH = "/SensorCollector/collects"
-        const val FILE_NAME_PREFIX = "accelerometer_report_"
-    }
-
-    /**
-     * Creates and returns the directory for the session if it doesn't exists
-     * Just returns it otherwise
-     */
-    private fun createSessionDirectoryIfNeeded(sessionName: String): File {
-        val rootDir = File(getExternalFilesDir(null), ROOT_PATH)
-
-        val sessionDir = File(rootDir, sessionName.trim())
-
-        if (!sessionDir.exists()) {
-            sessionDir.mkdirs()
-        }
-
-        return sessionDir
-    }
-
-    /**
-     * Creates the new report file based on the number of report files
-     */
-    private fun createReportFile(sessionDir: File): File {
-        val reportsDir = File(sessionDir, "reports")
-        if (!reportsDir.exists()) {
-            reportsDir.mkdirs()
-        }
-
-        val numberOfFiles =
-            reportsDir.listFiles()?.count { it.isFile && it.name.contains(FILE_NAME_PREFIX) }
-                ?: 0
-
-        // if there are 0 files, next file will be ..._1, and so on
-        val currentFileNumber = numberOfFiles + 1
-
-        val reportFile = File(reportsDir, "$FILE_NAME_PREFIX$currentFileNumber.csv")
-
-        return reportFile
-    }
-
-    private fun startCollectingData(sessionName: String) {
-        val sessionDir = createSessionDirectoryIfNeeded(sessionName)
-
-        val reportFile = createReportFile(sessionDir)
-
-        sensorEventListener = object : SensorEventListener {
-            override fun onSensorChanged(event: SensorEvent?) {
-                event?.let {
-                    if (it.sensor.type == Sensor.TYPE_ACCELEROMETER) {
-                        val timestamp = System.nanoTime()
-                        val x = it.values[0]
-                        val y = it.values[1]
-                        val z = it.values[2]
-
-                        println("joaorosa | x=$x, y=$y, z=$z")
-                        writeToCSV(timestamp, x, y, z)
-                    }
-                }
-            }
-
-            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
-                // Do nothing since we don't need to handle accuracy changes
-            }
-        }
-        sensorManager.registerListener(
-            sensorEventListener,
-            accelerometerSensor,
-            SensorManager.SENSOR_DELAY_UI
-        )
-    }
-
-    private fun stopCollectingData() {
-        sensorManager.unregisterListener(sensorEventListener)
-    }
-
-    private fun writeToCSV(timestamp: Long, x: Float, y: Float, z: Float) {
-        // TODO joaorosa
     }
 }
 
 @Composable
 fun SensorCollectorApp(
-    onStartCollecting: (sessionName: String) -> Unit,
-    onStopCollecting: () -> Unit,
+    state: SensorCollectorState,
+    handleIntent: (MainIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(16.dp)
+            .background(Color.White),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text("Sensor Collector App", style = MaterialTheme.typography.h5)
 
-        val frequencies = listOf("100Hz", "200Hz", "MAX")
-
-        val (sessionName, setSessionName) = remember { mutableStateOf("") }
-        val (selectedFrequency, setSelectedFrequency) = remember { mutableStateOf(frequencies.first()) }
-        val (isDropdownExpanded, setDropdownExpanded) = remember { mutableStateOf(false) }
-        val (isRunning, setIsRunning) = remember { mutableStateOf(false) }
-
         // Session name input
-        Text("Session Name:")
         TextField(
-            value = sessionName,
-            onValueChange = { setSessionName(it) },
+            value = state.sessionName,
+            onValueChange = { handleIntent(MainIntent.UpdateSessionName(it)) },
             label = { Text("Enter Session Name") },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 16.dp)
+                .padding(top = 32.dp),
+            enabled = !state.isCollecting
         )
+
+        state.errorRes?.let {
+            Text(
+                stringResource(state.errorRes),
+                color = Color.Red,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
 
         Box {
             // Frequency selection
             Button(
-                onClick = { setDropdownExpanded(!isDropdownExpanded) },
+                onClick = {
+                    handleIntent(MainIntent.ToggleDropdownMenu(!state.isDropdownMenuExpanded))
+                },
                 modifier = Modifier.padding(top = 16.dp)
             ) {
                 Text(text = "Select Frequency")
@@ -196,33 +118,36 @@ fun SensorCollectorApp(
 
             // Show the dropdown menu only when it's expanded
             DropdownMenu(
-                expanded = isDropdownExpanded,
-                onDismissRequest = { setDropdownExpanded(false) }
+                expanded = state.isDropdownMenuExpanded,
+                onDismissRequest = { handleIntent(MainIntent.ToggleDropdownMenu(false)) }
             ) {
-                frequencies.forEach {
-                    DropdownMenuItem(onClick = {
-                        setSelectedFrequency(it)
-                        setDropdownExpanded(false) // Close dropdown after selection
-                    }) {
+                state.availableFrequencies.forEach {
+                    DropdownMenuItem(
+                        onClick = {
+                            handleIntent(MainIntent.SelectFrequency(it))
+                            // Close dropdown after selection
+                        }
+                    ) {
                         Text(text = it)
                     }
                 }
             }
         }
 
+
         Text(
-            text = "Selected Frequency: $selectedFrequency",
+            text = "${stringResource(R.string.selected_frequency)} ${state.selectedFrequency}",
             modifier = Modifier
                 .padding(16.dp)
         )
 
-        val collectButtonText = if (isRunning) {
-            "Stop Collection"
+        val collectButtonText = if (state.isCollecting) {
+            stringResource(R.string.stop_collecting)
         } else {
-            "Start Collection"
+            stringResource(R.string.start_collecting)
         }
 
-        val collectButtonColors = if (isRunning) {
+        val collectButtonColors = if (state.isCollecting) {
             ButtonDefaults.buttonColors(
                 backgroundColor = Color.Red,
                 contentColor = Color.White
@@ -234,30 +159,58 @@ fun SensorCollectorApp(
             )
         }
 
-        // Start and Stop buttons
+        // Start/ Stop button
         Button(
             modifier = Modifier.padding(top = 16.dp),
             colors = collectButtonColors,
             onClick = {
-                val newState = !isRunning
-                setIsRunning(newState)
+                val newState = !state.isCollecting
 
                 if (newState) {
-                    onStartCollecting(sessionName)
+                    handleIntent(MainIntent.StartCollecting)
                 } else {
-                    onStopCollecting()
+                    handleIntent(MainIntent.StopCollecting)
                 }
             }
         ) {
             Text(collectButtonText)
         }
+
+        Button(
+            modifier = Modifier.padding(top = 16.dp),
+            onClick = {
+                handleIntent(MainIntent.DisplaySessionData)
+            }
+        ) {
+            Text(stringResource(R.string.view_session))
+        }
+
+        state.sessionData?.let { session ->
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(5), // 5 fields, 1 column per field
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(width = 1.dp, color = Color.Black)
+            ) {
+                items(session.flatten()) { cell ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp)
+                    ) {
+                        Text(text = cell)
+                    }
+                }
+            }
+        }
     }
-
-
 }
 
 @Preview(showBackground = true)
 @Composable
-fun DefaultPreview() {
-    SensorCollectorApp({}, {})
+fun SensorCollectorAppPreview() {
+    SensorCollectorApp(
+        state = SensorCollectorState(),
+        handleIntent = {}
+    )
 }
