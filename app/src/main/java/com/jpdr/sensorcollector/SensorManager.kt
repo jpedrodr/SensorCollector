@@ -6,14 +6,16 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileReader
 import java.io.FileWriter
 import java.io.IOException
+import javax.inject.Inject
 
-class SensorManager(
-    private val context: Context
+class SensorManager @Inject constructor(
+    @ApplicationContext private val context: Context
 ) : SensorEventListener {
 
     private val sensorManager by lazy { context.getSystemService(SENSOR_SERVICE) as SensorManager }

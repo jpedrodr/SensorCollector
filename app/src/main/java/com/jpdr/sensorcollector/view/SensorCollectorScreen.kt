@@ -33,7 +33,7 @@ import androidx.compose.ui.unit.dp
 import com.jpdr.sensorcollector.R
 
 @Composable
-fun SensorCollectorApp(
+fun SensorCollectorScreen(
     state: SensorCollectorState,
     handleIntent: (MainIntent) -> Unit,
     modifier: Modifier = Modifier,
@@ -207,8 +207,8 @@ private fun SensorCollectorGrid(data: List<List<String>>, modifier: Modifier = M
 
 @Preview(showBackground = true)
 @Composable
-fun SensorCollectorAppPreview() {
-    SensorCollectorApp(
+fun SensorCollectorScreenPreview() {
+    SensorCollectorScreen(
         state = SensorCollectorState(),
         handleIntent = {}
     )

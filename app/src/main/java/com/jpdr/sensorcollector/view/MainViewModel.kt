@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.jpdr.sensorcollector.R
 import com.jpdr.sensorcollector.SensorManager
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,16 +16,19 @@ import kotlinx.coroutines.launch
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.util.Locale
+import javax.inject.Inject
 
-class MainViewModel(
-    context: Application
+@HiltViewModel
+class MainViewModel @Inject constructor(
+    context: Application,
+    private val sensorManager: SensorManager
 ) : AndroidViewModel(context) {
 
     init {
         System.loadLibrary("sensor_analyzer")
     }
 
-    private val sensorManager: SensorManager = SensorManager(context)
+//    private val sensorManager: SensorManager = SensorManager(context)
 
     val formatter = DecimalFormat("0.##E0", DecimalFormatSymbols(Locale.US))
 

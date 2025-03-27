@@ -70,8 +70,6 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     debugImplementation(libs.androidx.ui.tooling)
 
-    implementation(libs.androidx.hilt.lifecycle.viewmodel)
-    implementation(libs.hilt.android)
-
-    kapt(libs.hilt.android.compiler)
+    implementation(libs.google.hilt.android)
+    kapt(libs.google.hilt.compiler)
 }
