@@ -7,4 +7,5 @@
     <string name="view_last_report">Display last report</string>
     <string name="error_empty_session_name">Session name can\'t be empty</string>
     <string name="error_empty_session_data">There is no session with this name</string>
+    <string name="error_empty_report_data">There is no reports for this session</string>
 </resources>

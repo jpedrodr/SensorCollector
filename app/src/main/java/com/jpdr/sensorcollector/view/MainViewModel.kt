@@ -5,6 +5,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.jpdr.sensorcollector.R
+import com.jpdr.sensorcollector.SensorAnalyzer
 import com.jpdr.sensorcollector.manager.FileManager
 import com.jpdr.sensorcollector.manager.SensorManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,14 +24,11 @@ import javax.inject.Inject
 class MainViewModel @Inject constructor(
     context: Application,
     private val sensorManager: SensorManager,
-    private val fileModel: FileManager,
+    private val fileManager: FileManager,
+    private val sensorAnalyzer: SensorAnalyzer
 ) : AndroidViewModel(context) {
 
-    init {
-        System.loadLibrary("sensor_analyzer")
-    }
-
-    val formatter = DecimalFormat("0.##E0", DecimalFormatSymbols(Locale.US))
+    private val formatter = DecimalFormat("0.##E0", DecimalFormatSymbols(Locale.US))
 
     private val _state = MutableStateFlow<SensorCollectorState>(
         SensorCollectorState(
@@ -40,94 +38,113 @@ class MainViewModel @Inject constructor(
     )
     val state = _state.asStateFlow()
 
-    external fun createReport(sessionName: String)
-
     fun handleIntent(intent: MainIntent) {
         when (intent) {
-            is MainIntent.UpdateSessionName -> {
-                _state.update {
-                    it.copy(sessionName = intent.sessionName.trim())
-                }
+            is MainIntent.UpdateSessionName -> onUpdateSessionName(intent.sessionName.trim())
+            is MainIntent.SelectFrequency -> onSelectFrequency(intent.frequency)
+            is MainIntent.ToggleDropdownMenu -> onToggleDropdownMenu(intent.expanded)
+            is MainIntent.DisplaySessionData -> onDisplaySessionData()
+            is MainIntent.DisplayLastReportData -> onDisplayLastReportData()
+            is MainIntent.StartCollecting -> onStartCollecting()
+            MainIntent.StopCollecting -> onStopCollecting()
+        }
+    }
+
+    private fun onUpdateSessionName(sessionName: String) {
+        _state.update {
+            it.copy(sessionName = sessionName.trim())
+        }
+    }
+
+    private fun onSelectFrequency(frequency: String) {
+        _state.update {
+            it.copy(
+                selectedFrequency = frequency,
+                isDropdownMenuExpanded = false
+            )
+        }
+    }
+
+    private fun onToggleDropdownMenu(expanded: Boolean) {
+        _state.update {
+            it.copy(isDropdownMenuExpanded = expanded)
+        }
+    }
+
+    private fun onDisplaySessionData() {
+        if (_state.value.sessionName.isEmpty()) {
+            _state.update {
+                it.copy(errorRes = R.string.error_empty_session_name)
             }
+            return
+        }
 
-            is MainIntent.SelectFrequency -> {
-                _state.update {
-                    it.copy(
-                        selectedFrequency = intent.frequency,
-                        isDropdownMenuExpanded = false
-                    )
-                }
+        val data = fileManager.getSessionData(_state.value.sessionName)
+        if (data.isEmpty()) {
+            _state.update {
+                it.copy(
+                    errorRes = R.string.error_empty_session_data,
+                    sessionData = null
+                )
             }
-
-            is MainIntent.ToggleDropdownMenu -> {
-                _state.update {
-                    it.copy(isDropdownMenuExpanded = intent.expanded)
-                }
-            }
-
-            is MainIntent.DisplaySessionData -> {
-                if (_state.value.sessionName.isEmpty()) {
-                    _state.update {
-                        it.copy(errorRes = R.string.error_empty_session_name)
-                    }
-                    return
-                }
-
-                val data = fileModel.getSessionData(_state.value.sessionName)
-
-                if (data.isEmpty()) {
-                    _state.update {
-                        it.copy(
-                            errorRes = R.string.error_empty_session_data,
-                            sessionData = null
-                        )
-                    }
-                } else {
-                    val formattedData = getFormattedSessionData(data)
-
-                    _state.update {
-                        it.copy(sessionData = formattedData)
-                    }
-                }
-            }
-
-            is MainIntent.DisplayLastReportData -> {
-                val data = fileModel.getLastReportData(_state.value.sessionName)
-                _state.update {
-                    it.copy(reportData = data)
-                }
-            }
-
-            is MainIntent.StartCollecting -> {
-                if (_state.value.sessionName.isEmpty()) {
-                    _state.update {
-                        it.copy(errorRes = R.string.error_empty_session_name)
-                    }
-                } else {
-                    _state.update {
-                        it.copy(
-                            isCollecting = true,
-                            errorRes = null,
-                            sessionData = null
-                        )
-                    }
-                    sensorManager.startCollectingData(_state.value.sessionName)
-                    startReporting(_state.value.sessionName)
-                }
-            }
-
-            MainIntent.StopCollecting -> {
-                _state.update {
-                    it.copy(isCollecting = false)
-                }
-
-                sensorManager.stopCollectingData()
-                stopReporting(_state.value.sessionName)
+        } else {
+            val formattedData = getFormattedSessionData(data)
+            _state.update {
+                it.copy(sessionData = formattedData)
             }
         }
     }
 
-    fun getFormattedSessionData(data: List<List<String>>): List<List<String>> {
+    private fun onDisplayLastReportData() {
+        if (_state.value.sessionName.isEmpty()) {
+            _state.update {
+                it.copy(errorRes = R.string.error_empty_session_name)
+            }
+            return
+        }
+
+        val reportData = fileManager.getLastReportData(_state.value.sessionName)
+        if (reportData.isEmpty()) {
+            _state.update {
+                it.copy(
+                    errorRes = R.string.error_empty_report_data,
+                    sessionData = null
+                )
+            }
+        } else {
+            _state.update {
+                it.copy(reportData = reportData)
+            }
+        }
+    }
+
+    private fun onStartCollecting() {
+        if (_state.value.sessionName.isEmpty()) {
+            _state.update {
+                it.copy(errorRes = R.string.error_empty_session_name)
+            }
+        } else {
+            _state.update {
+                it.copy(
+                    isCollecting = true,
+                    errorRes = null,
+                    sessionData = null
+                )
+            }
+            sensorManager.startCollectingData(_state.value.sessionName)
+            startReporting(_state.value.sessionName)
+        }
+    }
+
+    private fun onStopCollecting() {
+        _state.update {
+            it.copy(isCollecting = false)
+        }
+        sensorManager.stopCollectingData()
+        stopReporting(_state.value.sessionName)
+    }
+
+    private fun getFormattedSessionData(data: List<List<String>>): List<List<String>> {
         return data.mapIndexed { index, row ->
             if (index == 0) row
             else {
@@ -144,7 +161,7 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             while (_state.value.isCollecting) {
                 delay(INTERVAL_MILLIS)
-                createReport(sessionName)
+                sensorAnalyzer.createReport(sessionName)
             }
         }
     }
