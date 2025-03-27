@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.jpdr.sensorcollector.R
@@ -205,11 +206,58 @@ private fun SensorCollectorGrid(data: List<List<String>>, modifier: Modifier = M
     }
 }
 
+private val STATE_WITH_DATA = SensorCollectorState(
+    sessionName = "session1",
+    availableFrequencies = listOf("100Hz", "200Hz", "MAX"),
+    selectedFrequency = "200Hz",
+    isCollecting = true,
+    sessionData = listOf(
+        listOf(
+            "timestamp (ns)",
+            "sensor_id",
+            "sensor_value_x (m/s2)",
+            "sensor_value_y (m/s2)",
+            "sensor_value_z (m/s2)"
+        ),
+        listOf("4.77E14", "1", "0.43412341", "1.43234", "1.12323"),
+        listOf("4.77E14", "1", "0.43412341", "1.43234", "1.12323"),
+        listOf("4.77E14", "1", "0.43412341", "1.43234", "1.12323")
+    ),
+    reportData = listOf(
+        listOf(
+            "report_timestamp",
+            "collection_start_time",
+            "total_samples",
+            "total_gaps_duration"
+        ),
+        listOf("2024-12-13T00:00:00", "2024-12-13T00:00:00", "850", "10.5")
+    )
+)
+
+@Preview(showBackground = true)
+@Composable
+fun SensorCollectorScreenDefaultPreview() {
+    SensorCollectorScreen(
+        state = SensorCollectorState(),
+        handleIntent = {}
+    )
+}
+
 @Preview(showBackground = true)
 @Composable
 fun SensorCollectorScreenPreview() {
     SensorCollectorScreen(
-        state = SensorCollectorState(),
+        state = STATE_WITH_DATA,
+        handleIntent = {}
+    )
+}
+
+
+@Preview(showBackground = true, device = Devices.AUTOMOTIVE_1024p)
+@Composable
+fun SensorCollectorScreenLandscapePreview() {
+    SensorCollectorScreen(
+        state = STATE_WITH_DATA,
         handleIntent = {}
     )
 }

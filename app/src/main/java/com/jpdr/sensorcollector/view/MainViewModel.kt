@@ -141,7 +141,6 @@ class MainViewModel @Inject constructor(
     }
 
     private fun startReporting(sessionName: String) {
-        println("joaorosa | startReporting -> $sessionName")
         viewModelScope.launch(Dispatchers.IO) {
             while (_state.value.isCollecting) {
                 delay(INTERVAL_MILLIS)
