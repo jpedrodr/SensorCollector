@@ -5,7 +5,8 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.jpdr.sensorcollector.R
-import com.jpdr.sensorcollector.SensorManager
+import com.jpdr.sensorcollector.manager.FileManager
+import com.jpdr.sensorcollector.manager.SensorManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -21,14 +22,13 @@ import javax.inject.Inject
 @HiltViewModel
 class MainViewModel @Inject constructor(
     context: Application,
-    private val sensorManager: SensorManager
+    private val sensorManager: SensorManager,
+    private val fileModel: FileManager,
 ) : AndroidViewModel(context) {
 
     init {
         System.loadLibrary("sensor_analyzer")
     }
-
-//    private val sensorManager: SensorManager = SensorManager(context)
 
     val formatter = DecimalFormat("0.##E0", DecimalFormatSymbols(Locale.US))
 
@@ -73,56 +73,56 @@ class MainViewModel @Inject constructor(
                     return
                 }
 
-//                val data = sensorManager.getSessionData(_state.value.sessionName)
-//
-//                if (data.isEmpty()) {
-//                    _state.update {
-//                        it.copy(
-//                            errorRes = R.string.error_empty_session_data,
-//                            sessionData = null
-//                        )
-//                    }
-//                } else {
-//                   val formattedData = getFormattedSessionData(data)
-//
-//                    _state.update {
-//                        it.copy(sessionData = formattedData)
-//                    }
-//                }
+                val data = fileModel.getSessionData(_state.value.sessionName)
+
+                if (data.isEmpty()) {
+                    _state.update {
+                        it.copy(
+                            errorRes = R.string.error_empty_session_data,
+                            sessionData = null
+                        )
+                    }
+                } else {
+                    val formattedData = getFormattedSessionData(data)
+
+                    _state.update {
+                        it.copy(sessionData = formattedData)
+                    }
+                }
             }
 
             is MainIntent.DisplayLastReportData -> {
-//                val data = sensorManager.getLastReportData(_state.value.sessionName)
-//                _state.update {
-//                    it.copy(reportData = data)
-//                }
+                val data = fileModel.getLastReportData(_state.value.sessionName)
+                _state.update {
+                    it.copy(reportData = data)
+                }
             }
 
             is MainIntent.StartCollecting -> {
-//                if (_state.value.sessionName.isEmpty()) {
-//                    _state.update {
-//                        it.copy(errorRes = R.string.error_empty_session_name)
-//                    }
-//                } else {
-//                    _state.update {
-//                        it.copy(
-//                            isCollecting = true,
-//                            errorRes = null,
-//                            sessionData = null
-//                        )
-//                    }
-//                    sensorManager.startCollectingData(_state.value.sessionName)
-//                    startReporting(_state.value.sessionName)
-//                }
+                if (_state.value.sessionName.isEmpty()) {
+                    _state.update {
+                        it.copy(errorRes = R.string.error_empty_session_name)
+                    }
+                } else {
+                    _state.update {
+                        it.copy(
+                            isCollecting = true,
+                            errorRes = null,
+                            sessionData = null
+                        )
+                    }
+                    sensorManager.startCollectingData(_state.value.sessionName)
+                    startReporting(_state.value.sessionName)
+                }
             }
 
             MainIntent.StopCollecting -> {
-//                _state.update {
-//                    it.copy(isCollecting = false)
-//                }
-//
-//                sensorManager.stopCollectingData()
-//                stopReporting(_state.value.sessionName)
+                _state.update {
+                    it.copy(isCollecting = false)
+                }
+
+                sensorManager.stopCollectingData()
+                stopReporting(_state.value.sessionName)
             }
         }
     }
