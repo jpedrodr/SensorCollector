@@ -5,6 +5,7 @@ import com.jpdr.sensorcollector.R
 import com.jpdr.sensorcollector.SensorAnalyzer
 import com.jpdr.sensorcollector.manager.FileManager
 import com.jpdr.sensorcollector.manager.SensorManager
+import com.jpdr.sensorcollector.manager.SensorManager.SensorFrequency
 import io.mockk.every
 import io.mockk.justRun
 import io.mockk.mockk
@@ -34,13 +35,19 @@ class MainViewModelTest {
         justRun { fileManager.createDataFileIfNeeded(any()) }
         justRun { fileManager.writeToFile(any(), any(), any(), any(), any()) }
         justRun { fileManager.closeFile() }
-        justRun { sensorManager.startCollectingData(any()) }
+        justRun { sensorManager.startCollectingData(any(), any()) }
         justRun { sensorManager.stopCollectingData() }
     }
 
+    private val availableFrequencies = listOf(
+        Frequency(SensorFrequency.ONE_HUNDRED, R.string.frequency_100),
+        Frequency(SensorFrequency.TWO_HUNDRED, R.string.frequency_200),
+        Frequency(SensorFrequency.MAX, R.string.frequency_max)
+    )
+
     private val defaultState = SensorCollectorState(
-        availableFrequencies = listOf("100Hz", "200Hz", "MAX"),
-        selectedFrequency = "100Hz",
+        availableFrequencies = availableFrequencies,
+        selectedFrequency = availableFrequencies.first(),
     )
 
     @Test
@@ -66,7 +73,7 @@ class MainViewModelTest {
 
     @Test
     fun `handleIntent - SelectFrequency - state is updated`() {
-        val frequency = "MAX"
+        val frequency = availableFrequencies.last()
         val intent = MainIntent.SelectFrequency(frequency)
 
         viewModel.handleIntent(intent)
@@ -244,7 +251,10 @@ class MainViewModelTest {
         assertEquals(expected, state)
 
         verify(exactly = 1) {
-            sensorManager.startCollectingData(sessionName)
+            sensorManager.startCollectingData(
+                sessionName = sessionName,
+                frequency = availableFrequencies.first().sensorFrequency
+            )
         }
     }
 

@@ -5,11 +5,8 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import com.jpdr.sensorcollector.util.FrequencyCalculator.hertzToMicroseconds
 import dagger.hilt.android.qualifiers.ApplicationContext
-import java.io.BufferedReader
-import java.io.File
-import java.io.FileReader
-import java.io.IOException
 import javax.inject.Inject
 
 class SensorManager @Inject constructor(
@@ -39,13 +36,35 @@ class SensorManager @Inject constructor(
         // Do nothing since we don't need to handle accuracy changes
     }
 
-    fun startCollectingData(sessionName: String) {
+    fun startCollectingData(sessionName: String, frequency: SensorFrequency) {
         fileManager.createDataFileIfNeeded(sessionName)
-        sensorManager.registerListener(this, accelerometerSensor, SensorManager.SENSOR_DELAY_UI)
+
+        val delayInMicroseconds = frequency.toDelayInMicroseconds()
+
+        // register the accelerometer with the request frequency
+        sensorManager.registerListener(this, accelerometerSensor, delayInMicroseconds)
     }
 
     fun stopCollectingData() {
         sensorManager.unregisterListener(this)
         fileManager.closeFile()
+    }
+
+    /**
+     * The maximum delay (in microseconds) between readings
+     */
+    fun getMaxSensorDelayInMicroseconds(): Int = accelerometerSensor?.maxDelay ?: 1
+
+    // map the app Frequency model to delays in microseconds
+    private fun SensorFrequency.toDelayInMicroseconds() = when (this) {
+        SensorFrequency.ONE_HUNDRED -> hertzToMicroseconds(100) // 100Hz = 10 microseconds delay between readings
+        SensorFrequency.TWO_HUNDRED -> hertzToMicroseconds(200) // 200Hz = 5 microseconds delay between readings
+        SensorFrequency.MAX -> SensorManager.SENSOR_DELAY_FASTEST // 0ms, reads as fast as possible
+    }
+
+    enum class SensorFrequency {
+        ONE_HUNDRED, // 100Hz
+        TWO_HUNDRED, // 200Hz
+        MAX // MAX frequency
     }
 }

@@ -8,8 +8,11 @@ import com.jpdr.sensorcollector.R
 import com.jpdr.sensorcollector.SensorAnalyzer
 import com.jpdr.sensorcollector.manager.FileManager
 import com.jpdr.sensorcollector.manager.SensorManager
+import com.jpdr.sensorcollector.manager.SensorManager.SensorFrequency
+import com.jpdr.sensorcollector.util.FrequencyCalculator.hertzToMicroseconds
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,12 +31,14 @@ class MainViewModel @Inject constructor(
     private val sensorAnalyzer: SensorAnalyzer
 ) : AndroidViewModel(context) {
 
+    private var collectionJob: Job? = null
+
     private val formatter = DecimalFormat("0.##E0", DecimalFormatSymbols(Locale.US))
 
     private val _state = MutableStateFlow<SensorCollectorState>(
         SensorCollectorState(
-            availableFrequencies = FREQUENCIES,
-            selectedFrequency = FREQUENCIES.first()
+            availableFrequencies = getAvailableFrequencies(),
+            selectedFrequency = getAvailableFrequencies().first()
         )
     )
     val state = _state.asStateFlow()
@@ -52,11 +57,11 @@ class MainViewModel @Inject constructor(
 
     private fun onUpdateSessionName(sessionName: String) {
         _state.update {
-            it.copy(sessionName = sessionName.trim())
+            it.copy(sessionName = sessionName.trim(), errorRes = null)
         }
     }
 
-    private fun onSelectFrequency(frequency: String) {
+    private fun onSelectFrequency(frequency: Frequency) {
         _state.update {
             it.copy(
                 selectedFrequency = frequency,
@@ -131,8 +136,18 @@ class MainViewModel @Inject constructor(
                     sessionData = null
                 )
             }
-            sensorManager.startCollectingData(_state.value.sessionName)
-            startReporting(_state.value.sessionName)
+
+            val sensorFrequency =
+                _state.value.selectedFrequency?.sensorFrequency ?: SensorFrequency.ONE_HUNDRED
+
+            sensorManager.startCollectingData(
+                sessionName = _state.value.sessionName,
+                frequency = sensorFrequency
+            )
+            startReporting(
+                sessionName = _state.value.sessionName,
+                frequency = sensorFrequency
+            )
         }
     }
 
@@ -141,7 +156,7 @@ class MainViewModel @Inject constructor(
             it.copy(isCollecting = false)
         }
         sensorManager.stopCollectingData()
-        stopReporting(_state.value.sessionName)
+        stopReporting()
     }
 
     private fun getFormattedSessionData(data: List<List<String>>): List<List<String>> {
@@ -157,26 +172,41 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    private fun startReporting(sessionName: String) {
-        viewModelScope.launch(Dispatchers.IO) {
+    private fun startReporting(sessionName: String, frequency: SensorFrequency) {
+        val delayInMicroseconds = when (frequency) {
+            SensorFrequency.ONE_HUNDRED -> hertzToMicroseconds(100) // 100Hz
+            SensorFrequency.TWO_HUNDRED -> hertzToMicroseconds(200) // 200Hz
+            SensorFrequency.MAX -> sensorManager.getMaxSensorDelayInMicroseconds()
+        }
+
+        // once we stop collecting, the
+        collectionJob = viewModelScope.launch(Dispatchers.IO) {
+            // job was cancelled so this could be while(true) but this was is safer
             while (_state.value.isCollecting) {
-                delay(INTERVAL_MILLIS)
-                sensorAnalyzer.createReport(sessionName)
+                // start reporting after the report delay, no point reporting right after starting
+                delay(REPORT_INTERVAL_MILLIS)
+                sensorAnalyzer.createReport(
+                    sessionName = sessionName,
+                    delayInMicroseconds = delayInMicroseconds
+                )
             }
         }
     }
 
-    private fun stopReporting(sessionName: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-//            stopReporting(sessionName)
-        }
+    private fun stopReporting() {
+        collectionJob?.cancel()
+        collectionJob = null
     }
 
-    companion object {
-        private val FREQUENCIES = listOf("100Hz", "200Hz", "MAX")
+    private fun getAvailableFrequencies() = listOf(
+        Frequency(SensorFrequency.ONE_HUNDRED, R.string.frequency_100),
+        Frequency(SensorFrequency.TWO_HUNDRED, R.string.frequency_200),
+        Frequency(SensorFrequency.MAX, R.string.frequency_max)
+    )
 
-        //    private const val INTERVAL_MILLIS = 15 * 60 * 1000L // 15 minutes in milliseconds
-        private const val INTERVAL_MILLIS = 1 * 6 * 1000L // 15 minutes in milliseconds // joaorosa
+    companion object {
+        //            private const val REPORT_INTERVAL_MILLIS = 15 * 60 * 1000L // 15 minutes in milliseconds
+        private const val REPORT_INTERVAL_MILLIS = 5 * 1000L  //joaorosa
     }
 
     private fun formatTimestamp(timestamp: Long): String {
@@ -188,10 +218,15 @@ class MainViewModel @Inject constructor(
     }
 }
 
+data class Frequency(
+    val sensorFrequency: SensorFrequency,
+    @StringRes val displayValue: Int
+)
+
 data class SensorCollectorState(
     val sessionName: String = "",
-    val availableFrequencies: List<String> = listOf(),
-    val selectedFrequency: String = "",
+    val availableFrequencies: List<Frequency> = listOf(),
+    val selectedFrequency: Frequency? = null,
     val isDropdownMenuExpanded: Boolean = false,
     val isCollecting: Boolean = false,
     @StringRes val errorRes: Int? = null,
@@ -201,7 +236,7 @@ data class SensorCollectorState(
 
 sealed class MainIntent() {
     data class UpdateSessionName(val sessionName: String) : MainIntent()
-    data class SelectFrequency(val frequency: String) : MainIntent()
+    data class SelectFrequency(val frequency: Frequency) : MainIntent()
     data class ToggleDropdownMenu(val expanded: Boolean) : MainIntent()
     data object StartCollecting : MainIntent()
     data object StopCollecting : MainIntent()

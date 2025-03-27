@@ -1,6 +1,9 @@
 <resources>
     <string name="app_name">Sensor Collector App</string>
     <string name="selected_frequency">Selected Frequency:</string>
+    <string name="frequency_100">100Hz</string>
+    <string name="frequency_200">200Hz</string>
+    <string name="frequency_max">MAX</string>
     <string name="start_collecting">Start Collecting</string>
     <string name="stop_collecting">Stop Collecting</string>
     <string name="view_session">View session</string>

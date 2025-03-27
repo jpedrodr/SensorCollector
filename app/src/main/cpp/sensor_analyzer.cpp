@@ -19,7 +19,14 @@ const std::string HEADER_START_TIME = "collection_start_time";
 const std::string HEADER_TOTAL_SAMPLES = "total_samples";
 const std::string HEADER_TOTAL_GAPS_DURATION = "total_gaps_duration";
 
-std::string getNextReportFileName(const std::string &sessionName) {
+/**
+ * Gets the path for the next report file based on the previous files.
+ * It counts how many report files exist and gets the next one based on it.
+ * For example, if there are 3 report files, next report file will be report_4
+ * @param sessionName the session of the reports
+ * @return the path for the next report file
+ */
+std::string getNextReportFilePath(const std::string &sessionName) {
     // Define the base directory and file name components
     std::string reportDirectory = BASE_DIRECTORY + sessionName + REPORT_DIRECTORY;
 
@@ -42,6 +49,11 @@ std::string getNextReportFileName(const std::string &sessionName) {
     }
 }
 
+/**
+ * Formats from nanoseconds to ISO 8601
+ * @param timestamp the timestamp in nanoseconds
+ * @return a string of the formatted time
+ */
 std::string formatTime(long long timestamp) {
     // Convert long long timestamp to time_t (seconds since epoch)
     auto time = static_cast<std::time_t>(timestamp);
@@ -56,6 +68,10 @@ std::string formatTime(long long timestamp) {
     return oss.str();
 }
 
+/**
+ * Gets the current time formatted
+ * @return a string of the current time as ISO 8601
+ */
 std::string getCurrentTimeFormatted() {
     auto now = std::chrono::system_clock::now();
     std::time_t now_time_t = std::chrono::system_clock::to_time_t(now);
@@ -66,6 +82,11 @@ std::string getCurrentTimeFormatted() {
     return oss.str();
 }
 
+/**
+ * Gets the first timestamp of the data file as ISO 8601
+ * @param dataFilePath
+ * @return the first timestamp of the data file as ISO 8601
+ */
 std::string getFirstTimestampFromDataFile(const std::string &dataFilePath) {
     std::ifstream file(dataFilePath);
 
@@ -76,21 +97,15 @@ std::string getFirstTimestampFromDataFile(const std::string &dataFilePath) {
 
     std::string line;
 
-    LOGD("HEREEEEE");
-
     // skip the first line (header)
     if (std::getline(file, line)) {
-        LOGD("Skipped header line:  %s", line.c_str());
         // read the second line (data)
         if (std::getline(file, line)) {
-            LOGD("Second line:  %s", line.c_str());
             std::stringstream ss(line);
             std::string timestamp_str;
 
             // read the first value (timestamp) in the second line
             std::getline(ss, timestamp_str, ',');  // Read until the first comma
-
-            LOGD("1st timestamp: %s", timestamp_str.c_str());
 
             // convert the timestamp to a long long (nanoseconds)
             try {
@@ -111,7 +126,8 @@ JNIEXPORT void JNICALL
 Java_com_jpdr_sensorcollector_SensorAnalyzer_createReport(
         JNIEnv *env,
         jobject thiz,
-        jstring session_name
+        jstring session_name,
+        jint delay_microseconds
 ) {
     const char *sessionNameCStr = env->GetStringUTFChars(session_name, nullptr);
     std::string sessionName(sessionNameCStr);
@@ -119,7 +135,7 @@ Java_com_jpdr_sensorcollector_SensorAnalyzer_createReport(
     std::string dataFilePath = BASE_DIRECTORY + sessionName + "/data/accelerometer.csv";
 
     // Call the method to get the next available report file name
-    std::string reportFilePath = getNextReportFileName(sessionName);
+    std::string reportFilePath = getNextReportFilePath(sessionName);
 
     std::ifstream dataFile(dataFilePath);
 
@@ -129,11 +145,46 @@ Java_com_jpdr_sensorcollector_SensorAnalyzer_createReport(
     }
 
     int totalSamples = 0;
+    long long totalGapDurationInMicroseconds = 0;  // Total gap duration in microseconds
     std::string line;
+
+    // Read and discard the header line
+    if (!std::getline(dataFile, line)) {
+        LOGD("Empty or invalid file: %s", dataFilePath.c_str());
+        return;
+    }
+
+    long long prevTimestamp = -1;
+
     while (std::getline(dataFile, line)) {
         totalSamples++;
+        // get the first column (timestamp)
+        std::stringstream ss(line);
+
+        std::string timestampStr;
+        if (!std::getline(ss, timestampStr, ',')) continue;
+
+        // the file timestamp is in nanoseconds
+        long long currentTimestampInNanoseconds = std::stoll(timestampStr);
+        // convert nanoseconds to microseconds
+        long long currentTimestampInMicroseconds = currentTimestampInNanoseconds / 1000;
+
+        if (prevTimestamp != -1) {
+            long long expectedTimestamp = prevTimestamp + delay_microseconds;
+            if (currentTimestampInMicroseconds > expectedTimestamp) {
+                // here means there was a gap, the actual reading was later (>) than the expected
+                // so get the different and add it to the total gaps
+                totalGapDurationInMicroseconds += (currentTimestampInMicroseconds - expectedTimestamp);
+            }
+        }
+        prevTimestamp = currentTimestampInMicroseconds;
     }
     dataFile.close();
+
+    // Convert gap duration from microseconds to seconds
+    // static_cast<double> to prevent narrowing conversion
+    double totalGapDurationInSeconds = static_cast<double>(totalGapDurationInMicroseconds) / 1'000'000.0;
+    double totalGapDurationInSecondsRounded = std::round(totalGapDurationInSeconds * 10) / 10;
 
     std::ofstream reportFile(reportFilePath);
     if (!reportFile) {
@@ -151,10 +202,14 @@ Java_com_jpdr_sensorcollector_SensorAnalyzer_createReport(
     reportFile << getCurrentTimeFormatted() << ","
                << getFirstTimestampFromDataFile(dataFilePath) << ","
                << totalSamples << ","
-               << HEADER_TOTAL_GAPS_DURATION << std::endl;
+               << totalGapDurationInSecondsRounded << std::endl;
 
     reportFile.close();
 
-    LOGD("Timetamp: %s", getCurrentTimeFormatted().c_str());
+    // joaorosa remove this
+    LOGD("Timestamp: %s", getCurrentTimeFormatted().c_str());
     LOGD("Total lines in file: %d", totalSamples);
+    LOGD("Total gap duration (s): %.1f", totalGapDurationInSecondsRounded);
+    LOGD("Report file path: %s", reportFilePath.c_str());
+    LOGD("--------------------");
 }

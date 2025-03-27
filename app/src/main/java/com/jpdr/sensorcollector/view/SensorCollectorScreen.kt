@@ -32,6 +32,7 @@ import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.jpdr.sensorcollector.R
+import com.jpdr.sensorcollector.manager.SensorManager.SensorFrequency
 
 @Composable
 fun SensorCollectorScreen(
@@ -78,6 +79,7 @@ fun SensorCollectorScreen(
                 onClick = {
                     handleIntent(MainIntent.ToggleDropdownMenu(!state.isDropdownMenuExpanded))
                 },
+                enabled = !state.isCollecting,
                 modifier = Modifier.padding(top = 16.dp)
             ) {
                 Text(text = "Select Frequency")
@@ -92,21 +94,21 @@ fun SensorCollectorScreen(
                     DropdownMenuItem(
                         onClick = {
                             handleIntent(MainIntent.SelectFrequency(it))
-                            // Close dropdown after selection
                         }
                     ) {
-                        Text(text = it)
+                        Text(text = stringResource(it.displayValue))
                     }
                 }
             }
         }
 
-
-        Text(
-            text = "${stringResource(R.string.selected_frequency)} ${state.selectedFrequency}",
-            modifier = Modifier
-                .padding(16.dp)
-        )
+        state.selectedFrequency?.let { frequency ->
+            Text(
+                text = "${stringResource(R.string.selected_frequency)} ${stringResource(frequency.displayValue)}",
+                modifier = Modifier
+                    .padding(16.dp)
+            )
+        }
 
         val collectButtonText = if (state.isCollecting) {
             stringResource(R.string.stop_collecting)
@@ -126,7 +128,7 @@ fun SensorCollectorScreen(
             )
         }
 
-        // Start/ Stop button
+        // Start/Stop button
         Button(
             modifier = Modifier.padding(top = 16.dp),
             colors = collectButtonColors,
@@ -208,8 +210,12 @@ private fun SensorCollectorGrid(data: List<List<String>>, modifier: Modifier = M
 
 private val STATE_WITH_DATA = SensorCollectorState(
     sessionName = "session1",
-    availableFrequencies = listOf("100Hz", "200Hz", "MAX"),
-    selectedFrequency = "200Hz",
+    availableFrequencies = listOf(
+        Frequency(SensorFrequency.ONE_HUNDRED, R.string.frequency_100),
+        Frequency(SensorFrequency.TWO_HUNDRED, R.string.frequency_200),
+        Frequency(SensorFrequency.MAX, R.string.frequency_max)
+    ),
+    selectedFrequency = Frequency(SensorFrequency.ONE_HUNDRED, R.string.frequency_100),
     isCollecting = true,
     sessionData = listOf(
         listOf(

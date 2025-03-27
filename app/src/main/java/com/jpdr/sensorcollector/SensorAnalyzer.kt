@@ -11,5 +11,5 @@ class SensorAnalyzer @Inject constructor() {
         System.loadLibrary("sensor_analyzer")
     }
 
-    external fun createReport(sessionName: String)
+    external fun createReport(sessionName: String, delayInMicroseconds: Int)
 }
