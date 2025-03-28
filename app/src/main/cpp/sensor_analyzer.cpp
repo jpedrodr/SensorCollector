@@ -7,7 +7,7 @@
 #include <cmath>
 #include <android/log.h>
 
-#define LOG_TAG "joaorosa"
+#define LOG_TAG "sensor_analyzer"
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 
 const std::string BASE_DIRECTORY = "/storage/emulated/0/Android/data/com.jpdr.sensorcollector/files/SensorCollector/collects/";
@@ -206,7 +206,6 @@ Java_com_jpdr_sensorcollector_SensorAnalyzer_createReport(
 
     reportFile.close();
 
-    // joaorosa remove this
     LOGD("Timestamp: %s", getCurrentTimeFormatted().c_str());
     LOGD("Total lines in file: %d", totalSamples);
     LOGD("Total gap duration (s): %.1f", totalGapDurationInSecondsRounded);

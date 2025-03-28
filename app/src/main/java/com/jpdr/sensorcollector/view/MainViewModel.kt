@@ -113,7 +113,7 @@ class MainViewModel @Inject constructor(
             _state.update {
                 it.copy(
                     errorRes = R.string.error_empty_report_data,
-                    sessionData = null
+                    reportData = null
                 )
             }
         } else {
@@ -133,7 +133,8 @@ class MainViewModel @Inject constructor(
                 it.copy(
                     isCollecting = true,
                     errorRes = null,
-                    sessionData = null
+                    sessionData = null,
+                    reportData = null
                 )
             }
 
@@ -205,8 +206,7 @@ class MainViewModel @Inject constructor(
     )
 
     companion object {
-        //            private const val REPORT_INTERVAL_MILLIS = 15 * 60 * 1000L // 15 minutes in milliseconds
-        private const val REPORT_INTERVAL_MILLIS = 5 * 1000L  //joaorosa
+        private const val REPORT_INTERVAL_MILLIS = 15 * 60 * 1000L // 15 minutes in milliseconds
     }
 
     private fun formatTimestamp(timestamp: Long): String {

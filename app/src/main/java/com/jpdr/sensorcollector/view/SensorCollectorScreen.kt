@@ -193,7 +193,7 @@ private fun SensorCollectorGrid(data: List<List<String>>, modifier: Modifier = M
         columns = GridCells.Fixed(header.size),
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(max = 400.dp)
+            .heightIn(max = 300.dp)
             .border(width = 1.dp, color = Color.Black)
     ) {
         items(dataRows.flatten()) { dataItem ->
