@@ -39,3 +39,5 @@ The expected sensor frequencies are:
 License:
 This project is licensed under the MIT License.
 
+
+https://github.com/jpedrodr/SensorCollector
